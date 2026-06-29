@@ -75,7 +75,7 @@ const handlePaystackSuccess = (reference: unknown) => {
     amount: Math.round(calculateTotals().total * 100),
     reference: new Date().getTime().toString(),
 
-    onSuccess(transaction) {
+    onSuccess(transaction: any) {
       handlePaystackSuccess(transaction);
     },
 
