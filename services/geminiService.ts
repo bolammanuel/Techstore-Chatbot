@@ -1,15 +1,24 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import type { Type } from "@google/genai";
 import { Product } from "../types";
 import { MOCK_PRODUCTS } from "../constants";
 
-// Always use new GoogleGenAI({apiKey: process.env.API_KEY});
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getApiKey = () => import.meta.env.VITE_API_KEY || process.env.API_KEY;
+
+const createGenAIClient = async () => {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+  const module = await import("@google/genai");
+  return new module.GoogleGenAI({ apiKey });
+};
 
 export const getSmartSearch = async (query: string): Promise<string[]> => {
-  if (!process.env.API_KEY || query.length < 2)
+  if (!getApiKey() || query.length < 2)
     return MOCK_PRODUCTS.map((p) => p.id);
 
   try {
+    const ai = await createGenAIClient();
+    if (!ai) return MOCK_PRODUCTS.map((p) => p.id);
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Given this product list: ${JSON.stringify(MOCK_PRODUCTS.map((p) => ({ id: p.id, name: p.name, desc: p.description })))}. 
@@ -35,9 +44,12 @@ export const getSmartSearch = async (query: string): Promise<string[]> => {
 export const getSearchSuggestions = async (
   query: string,
 ): Promise<string[]> => {
-  if (!process.env.API_KEY || query.length < 2) return [];
+  if (!getApiKey() || query.length < 2) return [];
 
   try {
+    const ai = await createGenAIClient();
+    if (!ai) return [];
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Based on these products: ${MOCK_PRODUCTS.map((p) => p.name).join(", ")}. 
@@ -73,7 +85,7 @@ export const getChatResponse = async (
   message: string,
   history: { role: "user" | "model"; text: string }[],
 ): Promise<ChatResponse> => {
-  if (!process.env.API_KEY)
+  if (!getApiKey())
     return {
       text: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
     };
@@ -98,6 +110,13 @@ export const getChatResponse = async (
   };
 
   try {
+    const ai = await createGenAIClient();
+    if (!ai) {
+      return {
+        text: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+      };
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: message,
