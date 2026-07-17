@@ -1,4 +1,4 @@
-import type { Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { Product } from "../types";
 import { MOCK_PRODUCTS } from "../constants";
 
