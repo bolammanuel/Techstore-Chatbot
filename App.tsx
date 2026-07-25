@@ -85,23 +85,33 @@ const handlePaystackSuccess = (reference: unknown) => {
   });
 };
 
-  // Persistence
+  // Persistence with safe JSON parsing
+  const safeParseJSON = <T,>(key: string, fallback: T): T => {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : fallback;
+    } catch (e) {
+      console.error(`Error parsing localStorage key "${key}":`, e);
+      return fallback;
+    }
+  };
+
   useEffect(() => {
-    const savedCart = localStorage.getItem('techstore_cart');
-    const savedWishlist = localStorage.getItem('techstore_wishlist');
-    const savedReviews = localStorage.getItem('techstore_reviews');
-    const savedOrders = localStorage.getItem('techstore_orders');
-    if (savedCart) setCartItems(JSON.parse(savedCart));
-    if (savedWishlist) setWishlistIds(JSON.parse(savedWishlist));
-    if (savedReviews) setReviews(JSON.parse(savedReviews));
-    if (savedOrders) setOrders(JSON.parse(savedOrders));
+    setCartItems(safeParseJSON('techstore_cart', []));
+    setWishlistIds(safeParseJSON('techstore_wishlist', []));
+    setReviews(safeParseJSON('techstore_reviews', []));
+    setOrders(safeParseJSON('techstore_orders', []));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('techstore_cart', JSON.stringify(cartItems));
-    localStorage.setItem('techstore_wishlist', JSON.stringify(wishlistIds));
-    localStorage.setItem('techstore_reviews', JSON.stringify(reviews));
-    localStorage.setItem('techstore_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('techstore_cart', JSON.stringify(cartItems));
+      localStorage.setItem('techstore_wishlist', JSON.stringify(wishlistIds));
+      localStorage.setItem('techstore_reviews', JSON.stringify(reviews));
+      localStorage.setItem('techstore_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.error("Error saving state to localStorage:", e);
+    }
   }, [cartItems, wishlistIds, reviews, orders]);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);

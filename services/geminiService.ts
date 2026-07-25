@@ -2,11 +2,14 @@ import { Type } from "@google/genai";
 import { Product } from "../types";
 import { MOCK_PRODUCTS } from "../constants";
 
-const getApiKey = () => import.meta.env.VITE_API_KEY || process.env.API_KEY;
+const getApiKey = () => 
+  import.meta.env.VITE_GEMINI_API_KEY || 
+  import.meta.env.VITE_API_KEY || 
+  (typeof process !== "undefined" ? process.env.API_KEY : "");
 
 const createGenAIClient = async () => {
   const apiKey = getApiKey();
-  if (!apiKey) return null;
+  if (!apiKey || apiKey.includes("your_")) return null;
   const module = await import("@google/genai");
   return new module.GoogleGenAI({ apiKey });
 };
@@ -162,12 +165,14 @@ export const getChatResponse = async (
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
       if (call.name === "addToCart") {
-        const productId = (call.args as any).productId;
+        const productId = (call.args as any)?.productId;
         const product = MOCK_PRODUCTS.find((p) => p.id === productId);
-        return {
-          text: `I've added the ${product?.name || "item"} to your cart!`,
-          action: { type: "ADD_TO_CART", productId },
-        };
+        if (product) {
+          return {
+            text: `I've added the **${product.name}** to your cart!`,
+            action: { type: "ADD_TO_CART", productId: product.id },
+          };
+        }
       }
     }
 
