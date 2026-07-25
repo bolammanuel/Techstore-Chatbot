@@ -180,11 +180,11 @@ export const getChatResponse = async (
       }
     }
 
-    return {
-      text: response.text || "I'm sorry, I couldn't process that request.",
-    };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Chat Error:", error);
-    return { text: "I'm sorry, I encountered an error. Please try again." };
+    const errMessage = error?.message || error?.toString() || "Unknown error";
+    return { 
+      text: `I'm sorry, I encountered an error connecting to Google Gemini API: ${errMessage}. Please verify that your API key is valid and has Gemini API permissions in Google AI Studio.` 
+    };
   }
 };
