@@ -14,16 +14,20 @@ const createGenAIClient = async () => {
   return new module.GoogleGenAI({ apiKey });
 };
 
+const GEMINI_MODEL = "gemini-2.5-flash";
+
 export const getSmartSearch = async (query: string): Promise<string[]> => {
-  if (!getApiKey() || query.length < 2)
+  if (!getApiKey() || query.length < 2) {
+    if (!getApiKey()) console.warn("Gemini Search: VITE_GEMINI_API_KEY is missing.");
     return MOCK_PRODUCTS.map((p) => p.id);
+  }
 
   try {
     const ai = await createGenAIClient();
     if (!ai) return MOCK_PRODUCTS.map((p) => p.id);
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: GEMINI_MODEL,
       contents: `Given this product list: ${JSON.stringify(MOCK_PRODUCTS.map((p) => ({ id: p.id, name: p.name, desc: p.description })))}. 
       The user search query is: "${query}". 
       Return only a JSON array of product IDs that best match this query.`,
@@ -36,7 +40,6 @@ export const getSmartSearch = async (query: string): Promise<string[]> => {
       },
     });
 
-    // Using response.text property to extract generated text.
     return JSON.parse(response.text.trim());
   } catch (error) {
     console.error("Gemini Search Error:", error);
@@ -54,7 +57,7 @@ export const getSearchSuggestions = async (
     if (!ai) return [];
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: GEMINI_MODEL,
       contents: `Based on these products: ${MOCK_PRODUCTS.map((p) => p.name).join(", ")}. 
       The user is typing: "${query}". 
       Return a JSON array of 3-5 concise, relevant search suggestions (strings).`,
@@ -67,7 +70,6 @@ export const getSearchSuggestions = async (
       },
     });
 
-    // Using response.text property to extract generated text.
     return JSON.parse(response.text.trim());
   } catch (error) {
     return [];
@@ -88,10 +90,12 @@ export const getChatResponse = async (
   message: string,
   history: { role: "user" | "model"; text: string }[],
 ): Promise<ChatResponse> => {
-  if (!getApiKey())
+  if (!getApiKey() || getApiKey().includes("your_")) {
+    console.warn("Gemini Chat: VITE_GEMINI_API_KEY is missing or invalid in environment settings.");
     return {
-      text: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+      text: "I'm sorry, I'm having trouble connecting right now. Please verify that VITE_GEMINI_API_KEY is configured in your hosting environment variables.",
     };
+  }
 
   const siteInfo = {
     name: "TechStore",
@@ -116,12 +120,12 @@ export const getChatResponse = async (
     const ai = await createGenAIClient();
     if (!ai) {
       return {
-        text: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+        text: "I'm sorry, I'm having trouble connecting right now. Please verify that VITE_GEMINI_API_KEY is configured in your hosting environment variables.",
       };
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: GEMINI_MODEL,
       contents: message,
       config: {
         systemInstruction: `You are a helpful and professional AI assistant for TechStore, a premium electronics e-commerce site. 
