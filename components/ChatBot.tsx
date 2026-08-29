@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Loader2, User, Bot, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, User, Bot, Minimize2, Maximize2, Mic, MicOff } from 'lucide-react';
 import { getChatResponse, ChatResponse } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import { Product } from '../types';
@@ -19,7 +19,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onOpen, onClose, onAddToCart 
     { role: 'model', text: "Hi there! I'm your TechStore AI assistant. How can I help you today?" }
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Check speech support
+  const isSpeechSupported = typeof window !== 'undefined' && 
+    (!!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,11 +35,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onOpen, onClose, onAddToCart 
     if (isOpen) scrollToBottom();
   }, [messages, isOpen]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
-    const userMessage = input.trim();
+    const userMessage = text.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsLoading(true);
@@ -53,6 +58,76 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onOpen, onClose, onAddToCart 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sendMessageRef = useRef(sendMessage);
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  // Initialize SpeechRecognition
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    let rec: any = null;
+
+    if (SpeechRecognition) {
+      rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          sendMessageRef.current(transcript);
+        }
+      };
+
+      recognitionRef.current = rec;
+    }
+
+    return () => {
+      if (rec) {
+        rec.abort();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput('');
+      setIsListening(true);
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error('Failed to start recognition:', err);
+        setIsListening(false);
+      }
+    }
+  };
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage(input);
   };
 
   if (!isOpen) {
@@ -149,13 +224,38 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onOpen, onClose, onAddToCart 
             <input 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything..."
-              className="flex-grow px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#137fec] focus:bg-white transition-all"
+              placeholder={isListening ? "Listening..." : "Ask me anything..."}
+              disabled={isListening}
+              className="flex-grow px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#137fec] focus:bg-white transition-all disabled:opacity-75"
             />
+            {isSpeechSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all relative shrink-0 ${
+                  isListening
+                    ? 'bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/20'
+                    : 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                }`}
+                title={isListening ? "Stop listening" : "Start voice input"}
+              >
+                {isListening ? (
+                  <>
+                    <MicOff size={18} />
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                    </span>
+                  </>
+                ) : (
+                  <Mic size={18} />
+                )}
+              </button>
+            )}
             <button 
               type="submit"
-              disabled={!input.trim() || isLoading}
-              className="w-12 h-12 bg-[#137fec] text-white rounded-xl flex items-center justify-center hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
+              disabled={!input.trim() || isLoading || isListening}
+              className="w-12 h-12 bg-[#137fec] text-white rounded-xl flex items-center justify-center hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 shrink-0"
             >
               <Send size={18} />
             </button>
