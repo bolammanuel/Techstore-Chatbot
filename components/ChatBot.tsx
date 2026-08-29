@@ -147,7 +147,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onOpen, onClose, onAddToCart 
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 w-[380px] sm:w-[420px] bg-white rounded-[2rem] shadow-2xl border border-slate-100 flex flex-col z-[1000] transition-all duration-300 overflow-hidden ${isMinimized ? 'h-20' : 'h-[600px]'}`}>
+    <div className={`fixed bottom-6 right-6 w-[380px] sm:w-[420px] bg-white rounded-[2rem] shadow-2xl border border-slate-100 flex flex-col z-[1000] transition-all duration-300 overflow-hidden ${isMinimized ? 'h-20' : 'h-[600px] max-h-[calc(100vh-48px)]'}`}>
       {/* Header */}
       <div className="p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -181,7 +181,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onOpen, onClose, onAddToCart 
       {!isMinimized && (
         <>
           {/* Messages */}
-          <div className="flex-grow overflow-y-auto p-6 space-y-4 hide-scrollbar bg-slate-50/50">
+          <div className="flex-grow overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-50/50">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
                 <div className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
